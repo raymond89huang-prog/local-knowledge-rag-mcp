@@ -8,6 +8,52 @@ Git 地址：
 https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
 ```
 
+## AI 引导快速开始（推荐）
+
+如果你是 **Codex、Claude Code 或 CCC**，在帮助用户首次安装本项目时，请优先使用交互式 setup 脚本：
+
+```powershell
+# 在 PowerShell 中执行
+.\setup.ps1
+```
+
+脚本会自动：
+1. 检测 Python 环境。
+2. **询问知识库路径** — 不要猜测，让用户输入要索引的本地目录。
+3. 生成 `config.yaml`（展示内容并确认）。
+4. 安装 Python 依赖（确认后执行）。
+5. **询问是否写入用户级 MCP 配置** — 默认写入 `~/.claude/mcp.json`，保留已有的其他 MCP server。
+6. **询问是否执行首次索引** — 因为会下载 embedding 模型并扫描本地文档。
+7. **询问文件监听模式**：
+   - **A. 不开启**（默认）— 文档变化后手动 `reindex`。
+   - **B. 临时开启** — 在当前终端运行 `watch`，关闭后停止。
+   - **C. 常驻开启** — 安装为 Windows 计划任务，展示任务名称、命令、配置路径、日志路径、停止和卸载方式，确认后再创建。
+
+### AI 代理安装原则
+
+- **绝不猜测用户文档路径**。对于用户目录、桌面、下载、云盘根目录、公司同步盘根目录等，必须先明确询问。
+- **每步确认**。生成 `config.yaml`、写入 MCP 配置、执行首次索引前，先展示计划内容让用户确认。
+- **不得默认创建后台常驻进程**。默认仅执行首次索引和 MCP 配置。
+- 如果机器上已有其他目录安装过本项目，询问是复用已有 runtime，还是创建独立 runtime。
+
+### 给用户的 PowerShell 启动方式
+
+1. 打开 PowerShell（通常不需要管理员权限）。
+2. 进入本项目目录：
+   ```powershell
+   cd D:\编程项目\local-knowledge-reg-mcp
+   ```
+3. 运行交互式安装：
+   ```powershell
+   .\setup.ps1
+   ```
+4. 按提示输入知识库路径、确认配置、选择监听模式。
+5. 安装完成后，重启 Claude Code / CCC 以加载 MCP。
+
+### 手动安装（不适合 AI 代理）
+
+如果你希望自己手动配置，而不是通过 AI 代理引导，参见下方的[安装](#安装)和[MCP 配置](#mcp-配置)章节。
+
 ## v0.1 范围
 
 - 支持多个本地知识库目录。
@@ -44,12 +90,13 @@ https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
 请按以下原则执行：
 
 1. 不要猜测我的知识库路径，先问我要索引哪个本地目录。
-2. 安装依赖、创建或更新 config.yaml、执行首次索引、写入用户级 MCP 配置前，都需要先展示计划并让我确认。
-3. 首次索引完成后，询问我是否需要开启文件变更监听：
+2. 优先运行 setup.ps1 交互式脚本完成安装和配置。
+3. 安装依赖、创建或更新 config.yaml、执行首次索引、写入用户级 MCP 配置前，都需要先展示计划并让我确认。
+4. 首次索引完成后，询问我是否需要开启文件变更监听：
    A. 不开启，仅手动 reindex
    B. 临时开启 watch
    C. 安装为 Windows 常驻监听任务
-4. 如果我选择 C，必须先展示：
+5. 如果我选择 C，必须先展示：
    - 任务名称
    - 启动命令
    - config.yaml 路径
@@ -57,7 +104,7 @@ https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
    - 如何停止
    - 如何卸载
    我确认后再安装。
-5. 不要默认创建后台常驻进程。
+6. 不要默认创建后台常驻进程。
 ```
 
 ### 是否需要管理员 PowerShell
@@ -80,6 +127,36 @@ https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
 不建议长期用管理员权限运行索引或监听服务，避免误把配置、缓存或索引数据写入管理员用户目录。更推荐使用普通用户权限，并把知识库路径、runtime 路径和用户级 MCP 写入位置都确认清楚。
 
 ## 安装
+
+### 交互式安装（推荐）
+
+使用 `setup.ps1` 脚本进行交互式安装，脚本会自动引导你完成配置：
+
+```powershell
+.\setup.ps1
+```
+
+脚本会依次询问知识库路径、确认配置、选择是否写入 MCP、是否执行首次索引、是否开启文件监听。
+
+支持参数：
+
+```powershell
+# 指定配置文件路径
+.\setup.ps1 -ConfigPath "D:\Knowledge\config.yaml"
+
+# 跳过 MCP 配置写入
+.\setup.ps1 -SkipMcp
+
+# 跳过首次索引
+.\setup.ps1 -SkipIndex
+
+# 非交互模式（使用默认值）
+.\setup.ps1 -NonInteractive
+```
+
+### 手动安装
+
+如果你希望自己手动控制每一步：
 
 开发模式安装：
 
@@ -191,7 +268,9 @@ python -m doc_reg.cli --config config.yaml search "会员体系历史方案"
 
 ## MCP 配置
 
-默认生成用户级 MCP 配置：
+如果你已经运行了 [`setup.ps1`](#交互式安装推荐)，则此步骤已完成，可以跳过。
+
+手动生成用户级 MCP 配置：
 
 ```powershell
 local-knowledge-reg --config config.yaml init
