@@ -1,7 +1,7 @@
 ﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
-    交互式安装和配置 Local Knowledge Reg MCP。
+    交互式安装和配置 Local Knowledge RAG MCP。
 
 .DESCRIPTION
     本脚本引导用户完成首次安装：
@@ -481,7 +481,7 @@ switch ($watchChoice.ToUpper()) {
 # ── 完成 ──────────────────────────────────────────────────
 Write-Host ""
 Write-Host "=" * 60 -ForegroundColor Green
-Write-Host "  Local Knowledge Reg MCP 安装完成" -ForegroundColor Green
+Write-Host "  Local Knowledge RAG MCP 安装完成" -ForegroundColor Green
 Write-Host "=" * 60 -ForegroundColor Green
 Write-Host ""
 Write-Host "配置文件: $ConfigPath" -ForegroundColor White

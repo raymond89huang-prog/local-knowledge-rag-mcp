@@ -1,6 +1,6 @@
-﻿# Local Knowledge Reg MCP
+﻿# Local Knowledge RAG MCP
 
-Local Knowledge Reg MCP 是一个面向产品经理和产品团队的本地知识库检索 MCP 服务。它可以索引本地文档目录，并通过 MCP 向 Codex、Claude Code、CCC 等工具提供带来源引用的检索结果，适合在撰写 PRD、方案、周报、复盘、竞品分析时快速查找历史资料。
+Local Knowledge RAG MCP 是一个面向产品经理和产品团队的本地知识库检索 MCP 服务。它可以索引本地文档目录，并通过 MCP 向 Codex、Claude Code、CCC 等工具提供带来源引用的检索结果，适合在撰写 PRD、方案、周报、复盘、竞品分析时快速查找历史资料。
 
 Git 地址：
 

@@ -1,6 +1,6 @@
 # Roadmap
 
-Local Knowledge Reg MCP is a local knowledge registry MCP service for product managers and product teams. The first product goal is simple: connect local knowledge folders, keep them indexed, and let Codex, Claude Code, and CCC retrieve source-backed context while writing product documents.
+Local Knowledge RAG MCP is a local knowledge registry MCP service for product managers and product teams. The first product goal is simple: connect local knowledge folders, keep them indexed, and let Codex, Claude Code, and CCC retrieve source-backed context while writing product documents.
 
 ## v0.1: Local Product Knowledge MCP
 

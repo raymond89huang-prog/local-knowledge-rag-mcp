@@ -1,6 +1,6 @@
 ﻿# CCC Cross-Project Test Cases
 
-Use these cases when testing Local Knowledge Reg MCP from another project directory through CCC.
+Use these cases when testing Local Knowledge RAG MCP from another project directory through CCC.
 
 Repository:
 
