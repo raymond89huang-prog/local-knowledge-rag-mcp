@@ -141,7 +141,7 @@ async def main():
 
         raise ValueError(f"Unknown tool: {name}")
 
-    async with stdio_server(server) as (read_stream, write_stream):
+    async with stdio_server() as (read_stream, write_stream):
         init_options = InitializationOptions(
             server_name="local-knowledge-reg",
             server_version="0.1.0",
