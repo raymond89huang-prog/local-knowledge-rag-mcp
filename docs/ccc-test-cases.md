@@ -17,7 +17,8 @@ Before CCC installs or configures the project, it should ask the user to confirm
 - Where `config.yaml` should be created.
 - Whether CCC may install Python dependencies.
 - Whether CCC may run the first full index.
-- Whether CCC may write MCP config into the current project.
+- Whether CCC may write user-level MCP config to `~/.claude/mcp.json`.
+- Whether CCC should only print the MCP snippet instead of writing it.
 - Whether CCC should start `watch` now.
 
 CCC should not guess private document paths or index broad folders such as the home directory, desktop, downloads folder, cloud drive root, or company-wide sync root.
@@ -30,14 +31,14 @@ Prompt to CCC from a different project directory:
 Use this Git repository as a local MCP knowledge search service:
 https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
 
-Before installing anything, ask me which local knowledge folder should be indexed and where MCP config should be written.
+Before installing anything, ask me which local knowledge folder should be indexed. MCP config must be user-level, so ask before writing ~/.claude/mcp.json.
 ```
 
 Expected behavior:
 
 - CCC asks for the knowledge folder path.
 - CCC asks whether dependencies may be installed.
-- CCC asks whether MCP config should be written to the current project.
+- CCC asks whether user-level MCP config may be written to `~/.claude/mcp.json`.
 - CCC does not run indexing before confirmation.
 
 ## Test Case 2: Configure One Vault
@@ -110,12 +111,12 @@ python -m doc_reg.cli --config config.yaml index --vault product-docs
 Prompt to CCC:
 
 ```text
-Connect this MCP service to the current project.
+Connect this MCP service for my user account.
 ```
 
 Expected behavior:
 
-- CCC asks whether to write `.claude/mcp.json` in the current project or only print the JSON snippet.
+- CCC asks whether to write user-level `~/.claude/mcp.json` or only print the JSON snippet.
 - After approval, CCC runs:
 
 ```bash
