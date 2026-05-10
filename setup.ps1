@@ -300,27 +300,79 @@ if (Test-Path $reqFile) {
 Write-Step 5 7 "配置 MCP"
 
 if (-not $SkipMcp) {
-    if ($NonInteractive -or (Read-YesNo "是否写入用户级 MCP 配置（~/.claude/mcp.json）" "Y")) {
-        Write-Host "  执行: local-knowledge-reg init --scope user --config `"$ConfigPath`""
-        Push-Location $repoRoot
-        try {
-            & $pythonCmd -m doc_reg.cli init --scope user --config "$ConfigPath" 2>&1 | ForEach-Object {
-                Write-Host "    $_" -ForegroundColor DarkGray
-            }
-        } finally {
-            Pop-Location
-        }
-        Write-Ok "MCP 配置已写入"
+    $mcpFile = Join-Path $env:USERPROFILE ".claude" "mcp.json"
+    $mcpExists = Test-Path $mcpFile
+    $existingConfig = $null
+    $hasConflict = $false
 
-        # 验证
-        $mcpFile = Join-Path $env:USERPROFILE ".claude" "mcp.json"
-        if (Test-Path $mcpFile) {
-            Write-Ok "配置文件存在: $mcpFile"
+    # 检测已有配置
+    if ($mcpExists) {
+        try {
+            $existingMcp = Get-Content $mcpFile -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($existingMcp.mcpServers.'local-knowledge-reg') {
+                $existingConfig = $existingMcp.mcpServers.'local-knowledge-reg'
+                $existingHome = $existingConfig.env.'LOCAL_KNOWLEDGE_REG_HOME'
+                if ($existingHome -and ($existingHome -ne $repoRoot)) {
+                    $hasConflict = $true
+                    Write-Warn "检测到已有 local-knowledge-reg MCP 配置，但指向不同位置:"
+                    Write-Host "  现有配置指向: $existingHome" -ForegroundColor Yellow
+                    Write-Host "  当前项目路径: $repoRoot" -ForegroundColor Yellow
+                    Write-Host "  这可能是因为之前在其他目录安装过本项目。" -ForegroundColor Yellow
+                } else {
+                    Write-Ok "检测到已有 local-knowledge-reg 配置，指向当前项目"
+                }
+            }
+        } catch {
+            Write-Warn "无法解析现有 MCP 配置，将尝试覆盖"
         }
-    } else {
-        Write-Warn "跳过 MCP 配置写入"
-        Write-Host "  你可以稍后手动运行:" -ForegroundColor DarkGray
-        Write-Host "    local-knowledge-reg init --scope user --config `"$ConfigPath`"" -ForegroundColor DarkGray
+    }
+
+    if ($hasConflict) {
+        Write-Host ""
+        Write-Host "=== 配置冲突 ===" -ForegroundColor Red
+        Write-Host "继续使用当前配置会导致 CCC 加载旧位置的 MCP 服务。" -ForegroundColor White
+        Write-Host ""
+        if (-not (Read-YesNo "是否用当前项目路径覆盖已有配置" "Y")) {
+            Write-Warn "保留已有配置，跳过 MCP 写入"
+            Write-Host "  注意：CCC 可能继续使用旧位置的 MCP 服务" -ForegroundColor DarkGray
+            Write-Host "  如需切换到此项目，请手动删除 `$mcpFile 中的 local-knowledge-reg" -ForegroundColor DarkGray
+        } else {
+            $forceInit = $true
+        }
+    }
+
+    if (-not $hasConflict -or ($hasConflict -and $forceInit)) {
+        if ($NonInteractive -or (Read-YesNo "是否写入用户级 MCP 配置（~/.claude/mcp.json）" "Y")) {
+            Write-Host "  执行: local-knowledge-reg init --scope user --config `"$ConfigPath`" $(if ($forceInit) { '--force' })"
+            Push-Location $repoRoot
+            try {
+                $initArgs = @("-m", "doc_reg.cli", "init", "--scope", "user", "--config", "$ConfigPath")
+                if ($forceInit) { $initArgs += "--force" }
+                & $pythonCmd @initArgs 2>&1 | ForEach-Object {
+                    Write-Host "    $_" -ForegroundColor DarkGray
+                }
+            } finally {
+                Pop-Location
+            }
+            Write-Ok "MCP 配置已写入"
+
+            # 验证
+            if (Test-Path $mcpFile) {
+                Write-Ok "配置文件存在: $mcpFile"
+                # 展示关键路径信息
+                try {
+                    $newMcp = Get-Content $mcpFile -Raw -Encoding UTF8 | ConvertFrom-Json
+                    $newHome = $newMcp.mcpServers.'local-knowledge-reg'.env.'LOCAL_KNOWLEDGE_REG_HOME'
+                    Write-Ok "LOCAL_KNOWLEDGE_REG_HOME: $newHome"
+                } catch {
+                    Write-Warn "配置已写入但无法验证内容"
+                }
+            }
+        } else {
+            Write-Warn "跳过 MCP 配置写入"
+            Write-Host "  你可以稍后手动运行:" -ForegroundColor DarkGray
+            Write-Host "    local-knowledge-reg init --scope user --config `"$ConfigPath`"" -ForegroundColor DarkGray
+        }
     }
 } else {
     Write-Warn "跳过 MCP 配置（--SkipMcp 已指定）"

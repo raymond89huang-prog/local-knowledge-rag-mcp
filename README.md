@@ -10,10 +10,17 @@ https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
 
 ## AI 引导快速开始（推荐）
 
-如果你是 **Codex、Claude Code 或 CCC**，在帮助用户首次安装本项目时，请优先使用交互式 setup 脚本：
+如果你是 **Codex、Claude Code 或 CCC**，在帮助用户首次安装本项目时，**必须**使用交互式 setup 脚本完成配置。
+
+> **警告：不要直接运行 `local-knowledge-reg init` 或手动编辑 `~/.claude/mcp.json`。这些方式容易因路径推断错误导致 MCP 配置失效。**
+
+### 唯一推荐方式：setup.ps1
 
 ```powershell
-# 在 PowerShell 中执行
+# 1. 先进入本项目目录
+cd D:\编程项目\local-knowledge-reg-mcp
+
+# 2. 执行交互式安装脚本（必须从此目录运行）
 .\setup.ps1
 ```
 
@@ -29,12 +36,23 @@ https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
    - **B. 临时开启** — 在当前终端运行 `watch`，关闭后停止。
    - **C. 常驻开启** — 安装为 Windows 计划任务，展示任务名称、命令、配置路径、日志路径、停止和卸载方式，确认后再创建。
 
+### 为什么必须使用 setup.ps1？
+
+`setup.ps1` 会：
+- **锁定项目根目录**：确保 MCP 配置中的 `LOCAL_KNOWLEDGE_REG_HOME` 指向当前仓库目录，不会误指其他位置。
+- **检测配置冲突**：如果 `~/.claude/mcp.json` 中已存在 `local-knowledge-reg`，会提示用户确认是更新还是保留。
+- **展示并确认**：每一步都展示计划操作，用户确认后才执行。
+
+如果绕过 setup.ps1 直接运行 `python -m doc_reg.cli init`，`init` 命令会通过 `get_doc_reg_home()` 推断项目路径，若从错误目录运行或存在环境变量残留，会导致 MCP 配置指向错误位置，最终 CCC 加载失败。
+
 ### AI 代理安装原则
 
 - **绝不猜测用户文档路径**。对于用户目录、桌面、下载、云盘根目录、公司同步盘根目录等，必须先明确询问。
+- **必须使用 setup.ps1**。不得建议用户手动运行 `init` 或手动编辑 mcp.json。
 - **每步确认**。生成 `config.yaml`、写入 MCP 配置、执行首次索引前，先展示计划内容让用户确认。
 - **不得默认创建后台常驻进程**。默认仅执行首次索引和 MCP 配置。
 - 如果机器上已有其他目录安装过本项目，询问是复用已有 runtime，还是创建独立 runtime。
+- 如果 setup.ps1 不存在，说明仓库未完整克隆，应先检查文件完整性。
 
 ### 给用户的 PowerShell 启动方式
 
@@ -50,9 +68,15 @@ https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
 4. 按提示输入知识库路径、确认配置、选择监听模式。
 5. 安装完成后，重启 Claude Code / CCC 以加载 MCP。
 
-### 手动安装（不适合 AI 代理）
+### 手动安装（不推荐，容易出错）
 
-如果你希望自己手动配置，而不是通过 AI 代理引导，参见下方的[安装](#安装)和[MCP 配置](#mcp-配置)章节。
+> 手动安装仅适合深度了解本项目的用户。普通用户请使用 `setup.ps1`。
+
+如果你确实需要手动配置：
+1. 必须在本项目目录内执行所有命令。
+2. `init` 命令会从当前目录推断路径，**不要在项目目录外运行**。
+3. 配置完成后务必运行 `doctor` 验证。
+4. 参见下方的[手动 MCP 配置](#手动-mcp-配置)章节。
 
 ## v0.1 范围
 
@@ -87,16 +111,17 @@ https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
 请阅读这个 Git 仓库并帮我在当前机器上接入本地知识库 MCP：
 https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
 
-请按以下原则执行：
+请严格按以下原则执行：
 
 1. 不要猜测我的知识库路径，先问我要索引哪个本地目录。
-2. 优先运行 setup.ps1 交互式脚本完成安装和配置。
-3. 安装依赖、创建或更新 config.yaml、执行首次索引、写入用户级 MCP 配置前，都需要先展示计划并让我确认。
-4. 首次索引完成后，询问我是否需要开启文件变更监听：
+2. 必须运行 setup.ps1 交互式脚本完成安装和配置。不要建议我手动运行 init 或手动编辑 mcp.json。
+3. 执行 setup.ps1 前，先确认我在正确的项目目录内。
+4. 安装依赖、创建或更新 config.yaml、执行首次索引、写入用户级 MCP 配置前，都需要先展示计划并让我确认。
+5. 首次索引完成后，询问我是否需要开启文件变更监听：
    A. 不开启，仅手动 reindex
    B. 临时开启 watch
    C. 安装为 Windows 常驻监听任务
-5. 如果我选择 C，必须先展示：
+6. 如果我选择 C，必须先展示：
    - 任务名称
    - 启动命令
    - config.yaml 路径
@@ -104,7 +129,9 @@ https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
    - 如何停止
    - 如何卸载
    我确认后再安装。
-6. 不要默认创建后台常驻进程。
+7. 不要默认创建后台常驻进程。
+8. 配置完成后，运行 doctor 验证配置，并测试 search 命令是否正常工作。
+9. 最后告诉我需要重启 CCC 才能加载 MCP。
 ```
 
 ### 是否需要管理员 PowerShell
@@ -268,9 +295,13 @@ python -m doc_reg.cli --config config.yaml search "会员体系历史方案"
 
 ## MCP 配置
 
-如果你已经运行了 [`setup.ps1`](#交互式安装推荐)，则此步骤已完成，可以跳过。
+> **重要：如果你已经运行了 [`setup.ps1`](#交互式安装推荐)，则此步骤已完成，不需要再执行。**
 
-手动生成用户级 MCP 配置：
+### 手动 MCP 配置（仅当 setup.ps1 不可用时使用）
+
+> 以下命令必须在本项目根目录内执行，否则路径会指向错误位置。
+
+生成用户级 MCP 配置：
 
 ```powershell
 local-knowledge-reg --config config.yaml init
@@ -383,6 +414,98 @@ local-knowledge-reg --config config.yaml init --scope project
 当用户接入个人或团队知识库时，Codex 和 CCC 应优先展示计划写入的 `config.yaml` 和用户级 MCP 配置内容，再执行修改。
 
 CCC 跨项目验证清单见：[docs/ccc-test-cases.md](docs/ccc-test-cases.md)。
+
+## 故障排查
+
+### CCC 中找不到 local-knowledge-reg
+
+在 CCC 中输入 MCP 相关指令时，如果 `local-knowledge-reg` 没有出现在可用工具列表中，按以下顺序排查：
+
+#### 1. 检查用户级 MCP 配置是否存在
+
+```powershell
+Get-Content "$env:USERPROFILE\.claude\mcp.json"
+```
+
+如果文件不存在，说明 MCP 配置未写入。请重新运行 `setup.ps1`。
+
+#### 2. 检查配置中的路径是否正确
+
+打开 `~/.claude/mcp.json`，确认以下字段：
+
+```json
+{
+  "mcpServers": {
+    "local-knowledge-reg": {
+      "command": "python",
+      "args": [
+        "-m", "doc_reg.mcp_server",
+        "--config", "D:\\正确路径\\config.yaml"
+      ],
+      "env": {
+        "PYTHONIOENCODING": "utf-8",
+        "LOCAL_KNOWLEDGE_REG_HOME": "D:\\正确路径\\local-knowledge-reg-mcp"
+      }
+    }
+  }
+}
+```
+
+常见问题：
+- `args` 中的 `--config` 路径是否指向了正确的 `config.yaml`？
+- `env.LOCAL_KNOWLEDGE_REG_HOME` 是否指向了本项目根目录？
+- 路径中是否包含乱码或转义错误（如 `\` 写成了 `\` 或 `/`）？
+
+#### 3. 路径指向了旧安装位置
+
+如果之前在其他目录安装过本项目，`mcp.json` 可能仍指向旧位置。解决方式：
+
+```powershell
+# 在本项目目录内重新运行 setup.ps1
+.\setup.ps1
+```
+
+setup.ps1 会检测已有配置并提示是否覆盖。
+
+#### 4. 验证 MCP 服务器能否独立启动
+
+```powershell
+python -m doc_reg.mcp_server --config "D:\正确路径\config.yaml"
+```
+
+如果此命令报错，说明 Python 依赖未安装或 config.yaml 有问题。
+
+#### 5. 重启 CCC
+
+修改 `~/.claude/mcp.json` 后，必须**重启 CCC** 才能加载新配置。
+
+```powershell
+# 在 CCC 中退出
+/quit
+
+# 重新启动
+claude
+```
+
+### 搜索返回空结果
+
+1. 确认知识库目录在 `config.yaml` 中配置正确。
+2. 确认已执行首次索引：`local-knowledge-reg index`。
+3. 运行 `local-knowledge-reg doctor` 查看索引状态。
+4. 检查 `include` 规则是否匹配目标文件类型。
+
+### 索引时提示找不到 embedding 模型
+
+首次索引需要下载 embedding 模型（约 100MB+），请确保：
+- 网络连接正常。
+- HuggingFace 可访问（国内用户可能需要配置镜像）。
+- 磁盘空间充足。
+
+### 配置文件编码问题
+
+Windows PowerShell 默认使用 GBK 编码，可能导致中文路径乱码。解决方法：
+- 使用 `setup.ps1`，它会强制设置 UTF-8 编码。
+- 或手动设置编码：`[Console]::OutputEncoding = [System.Text.Encoding]::UTF8`
 
 ## 测试
 
