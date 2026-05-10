@@ -10,6 +10,11 @@ https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
 
 ## AI 引导快速开始（推荐）
 
+> **For AI agents / 给 AI 代理阅读：**  
+> Before installing or configuring this project, read [AI Installation and Usage Summary](docs/ai-install-summary.md).
+>
+> This summary is written for Codex, Claude Code, CCC and other MCP-compatible agents. It explains the local RAG / knowledge-base MCP positioning, required `setup.ps1` installation flow, safe configuration rules, supported tools and recommended usage behavior.
+
 如果你是 **Codex、Claude Code 或 CCC**，在帮助用户首次安装本项目时，**必须**使用交互式 setup 脚本完成配置。
 
 > **警告：不要直接运行 `local-knowledge-reg init` 或手动编辑 `~/.claude/mcp.json`。这些方式容易因路径推断错误导致 MCP 配置失效。**
