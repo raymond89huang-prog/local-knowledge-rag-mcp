@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     交互式安装和配置 Local Knowledge Reg MCP。
@@ -212,7 +212,7 @@ $templatePath = Join-Path $repoRoot "config.example.yaml"
 if (Test-Path $templatePath) {
     $template = Get-Content $templatePath -Raw -Encoding UTF8
 } else {
-    $template = Get-Content (Join-Path $repoRoot "doc_reg" "config.py") -ErrorAction SilentlyContinue
+    $template = Get-Content (Join-Path $repoRoot "doc_rag" "config.py") -ErrorAction SilentlyContinue
     if (-not $template) {
         $template = @"
 embedding:
@@ -253,7 +253,7 @@ foreach ($v in $vaults) {
     exclude:
       - ".obsidian/**"
       - ".claude/**"
-      - "local-knowledge-reg-mcp/**"
+      - "local-knowledge-rag-mcp/**"
       - "~`$*.docx"
 
 "@
@@ -309,17 +309,17 @@ if (-not $SkipMcp) {
     if ($mcpExists) {
         try {
             $existingMcp = Get-Content $mcpFile -Raw -Encoding UTF8 | ConvertFrom-Json
-            if ($existingMcp.mcpServers.'local-knowledge-reg') {
-                $existingConfig = $existingMcp.mcpServers.'local-knowledge-reg'
-                $existingHome = $existingConfig.env.'LOCAL_KNOWLEDGE_REG_HOME'
+            if ($existingMcp.mcpServers.'local-knowledge-rag') {
+                $existingConfig = $existingMcp.mcpServers.'local-knowledge-rag'
+                $existingHome = $existingConfig.env.'LOCAL_KNOWLEDGE_RAG_HOME'
                 if ($existingHome -and ($existingHome -ne $repoRoot)) {
                     $hasConflict = $true
-                    Write-Warn "检测到已有 local-knowledge-reg MCP 配置，但指向不同位置:"
+                    Write-Warn "检测到已有 local-knowledge-rag MCP 配置，但指向不同位置:"
                     Write-Host "  现有配置指向: $existingHome" -ForegroundColor Yellow
                     Write-Host "  当前项目路径: $repoRoot" -ForegroundColor Yellow
                     Write-Host "  这可能是因为之前在其他目录安装过本项目。" -ForegroundColor Yellow
                 } else {
-                    Write-Ok "检测到已有 local-knowledge-reg 配置，指向当前项目"
+                    Write-Ok "检测到已有 local-knowledge-rag 配置，指向当前项目"
                 }
             }
         } catch {
@@ -335,7 +335,7 @@ if (-not $SkipMcp) {
         if (-not (Read-YesNo "是否用当前项目路径覆盖已有配置" "Y")) {
             Write-Warn "保留已有配置，跳过 MCP 写入"
             Write-Host "  注意：CCC 可能继续使用旧位置的 MCP 服务" -ForegroundColor DarkGray
-            Write-Host "  如需切换到此项目，请手动删除 `$mcpFile 中的 local-knowledge-reg" -ForegroundColor DarkGray
+            Write-Host "  如需切换到此项目，请手动删除 `$mcpFile 中的 local-knowledge-rag" -ForegroundColor DarkGray
         } else {
             $forceInit = $true
         }
@@ -343,10 +343,10 @@ if (-not $SkipMcp) {
 
     if (-not $hasConflict -or ($hasConflict -and $forceInit)) {
         if ($NonInteractive -or (Read-YesNo "是否写入用户级 MCP 配置（~/.claude/mcp.json）" "Y")) {
-            Write-Host "  执行: local-knowledge-reg init --scope user --config `"$ConfigPath`" $(if ($forceInit) { '--force' })"
+            Write-Host "  执行: local-knowledge-rag init --scope user --config `"$ConfigPath`" $(if ($forceInit) { '--force' })"
             Push-Location $repoRoot
             try {
-                $initArgs = @("-m", "doc_reg.cli", "init", "--scope", "user", "--config", "$ConfigPath")
+                $initArgs = @("-m", "doc_rag.cli", "init", "--scope", "user", "--config", "$ConfigPath")
                 if ($forceInit) { $initArgs += "--force" }
                 & $pythonCmd @initArgs 2>&1 | ForEach-Object {
                     Write-Host "    $_" -ForegroundColor DarkGray
@@ -362,8 +362,8 @@ if (-not $SkipMcp) {
                 # 展示关键路径信息
                 try {
                     $newMcp = Get-Content $mcpFile -Raw -Encoding UTF8 | ConvertFrom-Json
-                    $newHome = $newMcp.mcpServers.'local-knowledge-reg'.env.'LOCAL_KNOWLEDGE_REG_HOME'
-                    Write-Ok "LOCAL_KNOWLEDGE_REG_HOME: $newHome"
+                    $newHome = $newMcp.mcpServers.'local-knowledge-rag'.env.'LOCAL_KNOWLEDGE_RAG_HOME'
+                    Write-Ok "LOCAL_KNOWLEDGE_RAG_HOME: $newHome"
                 } catch {
                     Write-Warn "配置已写入但无法验证内容"
                 }
@@ -371,7 +371,7 @@ if (-not $SkipMcp) {
         } else {
             Write-Warn "跳过 MCP 配置写入"
             Write-Host "  你可以稍后手动运行:" -ForegroundColor DarkGray
-            Write-Host "    local-knowledge-reg init --scope user --config `"$ConfigPath`"" -ForegroundColor DarkGray
+            Write-Host "    local-knowledge-rag init --scope user --config `"$ConfigPath`"" -ForegroundColor DarkGray
         }
     }
 } else {
@@ -383,10 +383,10 @@ Write-Step 6 7 "首次索引"
 
 if (-not $SkipIndex) {
     if ($NonInteractive -or (Read-YesNo "是否立即执行首次全量索引（会下载 embedding 模型并扫描文档）" "Y")) {
-        Write-Host "  执行: local-knowledge-reg index --config `"$ConfigPath`""
+        Write-Host "  执行: local-knowledge-rag index --config `"$ConfigPath`""
         Push-Location $repoRoot
         try {
-            & $pythonCmd -m doc_reg.cli index --config "$ConfigPath" 2>&1 | ForEach-Object {
+            & $pythonCmd -m doc_rag.cli index --config "$ConfigPath" 2>&1 | ForEach-Object {
                 if ($_ -match "error|ERROR|Failed|Exception") { Write-Err $_ }
                 elseif ($_ -match "warning|WARNING") { Write-Warn $_ }
                 else { Write-Host "    $_" -ForegroundColor DarkGray }
@@ -398,7 +398,7 @@ if (-not $SkipIndex) {
     } else {
         Write-Warn "跳过首次索引"
         Write-Host "  你可以稍后手动运行:" -ForegroundColor DarkGray
-        Write-Host "    local-knowledge-reg index --config `"$ConfigPath`"" -ForegroundColor DarkGray
+        Write-Host "    local-knowledge-rag index --config `"$ConfigPath`"" -ForegroundColor DarkGray
     }
 } else {
     Write-Warn "跳过首次索引（--SkipIndex 已指定）"
@@ -429,7 +429,7 @@ switch ($watchChoice.ToUpper()) {
         Pause
         Push-Location $repoRoot
         try {
-            & $pythonCmd -m doc_reg.cli watch --config "$ConfigPath"
+            & $pythonCmd -m doc_rag.cli watch --config "$ConfigPath"
         } finally {
             Pop-Location
         }
@@ -438,7 +438,7 @@ switch ($watchChoice.ToUpper()) {
         Write-Host ""
         Write-Host "=== 常驻监听任务配置 ===" -ForegroundColor Cyan
         $taskName = Read-Input "任务名称" "LocalKnowledgeReg-Watch"
-        $logDir = Read-Input "日志目录" (Join-Path $env:LOCALAPPDATA "local-knowledge-reg-mcp" "logs")
+        $logDir = Read-Input "日志目录" (Join-Path $env:LOCALAPPDATA "local-knowledge-rag-mcp" "logs")
         if (-not (Test-Path $logDir)) { New-Item -ItemType Directory -Force -Path $logDir | Out-Null }
         $stdoutLog = Join-Path $logDir "watch-out.log"
         $stderrLog = Join-Path $logDir "watch-err.log"
@@ -446,7 +446,7 @@ switch ($watchChoice.ToUpper()) {
         Write-Host ""
         Write-Host "任务配置:" -ForegroundColor White
         Write-Host "  任务名称: $taskName" -ForegroundColor White
-        Write-Host "  启动命令: $pythonCmd -m doc_reg.cli watch --config `"$ConfigPath`"" -ForegroundColor White
+        Write-Host "  启动命令: $pythonCmd -m doc_rag.cli watch --config `"$ConfigPath`"" -ForegroundColor White
         Write-Host "  配置文件: $ConfigPath" -ForegroundColor White
         Write-Host "  日志目录: $logDir" -ForegroundColor White
         Write-Host "  停止命令: schtasks /Delete /TN `"$taskName`" /F" -ForegroundColor White
@@ -454,7 +454,7 @@ switch ($watchChoice.ToUpper()) {
         Write-Host ""
 
         if (Read-YesNo "确认创建此任务" "N") {
-            $action = New-ScheduledTaskAction -Execute $pythonCmd -Argument "-m doc_reg.cli watch --config `"$ConfigPath`"" -WorkingDirectory $repoRoot
+            $action = New-ScheduledTaskAction -Execute $pythonCmd -Argument "-m doc_rag.cli watch --config `"$ConfigPath`"" -WorkingDirectory $repoRoot
             $trigger = New-ScheduledTaskTrigger -AtLogOn
             $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
             $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Limited
@@ -472,9 +472,9 @@ switch ($watchChoice.ToUpper()) {
     default {
         Write-Ok "选择不开启文件监听"
         Write-Host "  后续可手动运行:" -ForegroundColor DarkGray
-        Write-Host "    local-knowledge-reg index --config `"$ConfigPath`"" -ForegroundColor DarkGray
+        Write-Host "    local-knowledge-rag index --config `"$ConfigPath`"" -ForegroundColor DarkGray
         Write-Host "  或临时监听:" -ForegroundColor DarkGray
-        Write-Host "    local-knowledge-reg watch --config `"$ConfigPath`"" -ForegroundColor DarkGray
+        Write-Host "    local-knowledge-rag watch --config `"$ConfigPath`"" -ForegroundColor DarkGray
     }
 }
 
@@ -487,11 +487,12 @@ Write-Host ""
 Write-Host "配置文件: $ConfigPath" -ForegroundColor White
 Write-Host ""
 Write-Host "常用命令:" -ForegroundColor White
-Write-Host "  搜索文档: local-knowledge-reg search `"你的问题`" --config `"$ConfigPath`"" -ForegroundColor DarkGray
-Write-Host "  查看知识库: local-knowledge-reg list-vaults --config `"$ConfigPath`"" -ForegroundColor DarkGray
-Write-Host "  重新索引: local-knowledge-reg index --config `"$ConfigPath`"" -ForegroundColor DarkGray
-Write-Host "  诊断配置: local-knowledge-reg doctor --config `"$ConfigPath`"" -ForegroundColor DarkGray
+Write-Host "  搜索文档: local-knowledge-rag search `"你的问题`" --config `"$ConfigPath`"" -ForegroundColor DarkGray
+Write-Host "  查看知识库: local-knowledge-rag list-vaults --config `"$ConfigPath`"" -ForegroundColor DarkGray
+Write-Host "  重新索引: local-knowledge-rag index --config `"$ConfigPath`"" -ForegroundColor DarkGray
+Write-Host "  诊断配置: local-knowledge-rag doctor --config `"$ConfigPath`"" -ForegroundColor DarkGray
 Write-Host ""
 Write-Host "MCP 配置位置: $(Join-Path $env:USERPROFILE '.claude' 'mcp.json')" -ForegroundColor White
 Write-Host "请重启 Claude Code / CCC 以加载新的 MCP 配置。" -ForegroundColor Yellow
 Write-Host ""
+

@@ -1,7 +1,7 @@
-from doc_reg.loaders import LoaderRegistry
-from doc_reg.loaders.markdown import MarkdownLoader
-from doc_reg.loaders.spreadsheet import SpreadsheetLoader
-from doc_reg.loaders.text import TextLoader
+﻿from doc_rag.loaders import LoaderRegistry
+from doc_rag.loaders.markdown import MarkdownLoader
+from doc_rag.loaders.spreadsheet import SpreadsheetLoader
+from doc_rag.loaders.text import TextLoader
 
 
 def test_loader_registry_lists_v01_formats():
@@ -64,3 +64,4 @@ def test_csv_loader_records_sheet_row_location(tmp_path):
     assert chunks[0].metadata["row_start"] == 2
     assert chunks[0].metadata["row_end"] == 3
     assert "DAU" in chunks[0].content
+

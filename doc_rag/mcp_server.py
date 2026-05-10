@@ -49,7 +49,7 @@ async def main():
         chunk_overlap=config.chunking.chunk_overlap,
     )
     searcher = Searcher(store=store, embedder=embedder, min_score=config.search.min_score)
-    server = Server("local-knowledge-reg")
+    server = Server("local-knowledge-rag")
 
     @server.list_tools()
     async def list_tools():
@@ -143,7 +143,7 @@ async def main():
 
     async with stdio_server() as (read_stream, write_stream):
         init_options = InitializationOptions(
-            server_name="local-knowledge-reg",
+            server_name="local-knowledge-rag",
             server_version="0.1.0",
             capabilities=server.get_capabilities(
                 notification_options=NotificationOptions(),

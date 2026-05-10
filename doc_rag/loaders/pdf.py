@@ -1,7 +1,7 @@
-from pathlib import Path
+﻿from pathlib import Path
 from typing import List
 
-from doc_reg.document import DocumentChunk
+from doc_rag.document import DocumentChunk
 from .base import DocumentLoader
 
 
@@ -37,3 +37,4 @@ class PdfLoader(DocumentLoader):
             return reader.metadata.title or ""
         except Exception:
             return ""
+

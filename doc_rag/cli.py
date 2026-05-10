@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 import io
 import json
 import shutil
@@ -12,7 +12,7 @@ from .config import AppConfig, VaultConfig
 from .embedder import Embedder
 from .indexer import CheckpointManager, Indexer
 from .loaders import LoaderRegistry
-from .paths import get_cache_dir, get_doc_reg_home, get_runtime_dir
+from .paths import get_cache_dir, get_doc_rag_home, get_runtime_dir
 from .searcher import Searcher
 from .store import VectorStore
 
@@ -115,7 +115,7 @@ def cmd_status(args):
 def cmd_init(args):
     config_target = Path(args.config).resolve()
     if not config_target.exists():
-        template = get_doc_reg_home() / "config.example.yaml"
+        template = get_doc_rag_home() / "config.example.yaml"
         if template.exists():
             shutil.copyfile(template, config_target)
             print(f"[OK] Created config template: {config_target}")
@@ -128,14 +128,14 @@ def cmd_init(args):
         claude_dir = Path.cwd() / ".claude"
     mcp_file = claude_dir / "mcp.json"
 
-    doc_reg_home = get_doc_reg_home()
+    doc_rag_home = get_doc_rag_home()
 
     server_config = {
         "command": "python",
-        "args": ["-m", "doc_reg.mcp_server", "--config", str(config_target)],
+        "args": ["-m", "doc_rag.mcp_server", "--config", str(config_target)],
         "env": {
             "PYTHONIOENCODING": "utf-8",
-            "LOCAL_KNOWLEDGE_REG_HOME": str(doc_reg_home),
+            "LOCAL_KNOWLEDGE_RAG_HOME": str(doc_rag_home),
         },
     }
 
@@ -146,7 +146,7 @@ def cmd_init(args):
     print(f"Target file: {mcp_file}")
     print(f"Scope: {args.scope}")
     print(f"Config path: {config_target}")
-    print(f"Project home (LOCAL_KNOWLEDGE_REG_HOME): {doc_reg_home}")
+    print(f"Project home (LOCAL_KNOWLEDGE_RAG_HOME): {doc_rag_home}")
     print("")
 
     # 检测已有配置
@@ -155,15 +155,15 @@ def cmd_init(args):
         try:
             mcp_config = json.loads(mcp_file.read_text(encoding="utf-8"))
             servers = mcp_config.get("mcpServers", {})
-            if "local-knowledge-reg" in servers:
-                existing = servers["local-knowledge-reg"]
-                existing_home = existing.get("env", {}).get("LOCAL_KNOWLEDGE_REG_HOME")
-                print("[WARN] local-knowledge-reg already exists in MCP config")
+            if "local-knowledge-rag" in servers:
+                existing = servers["local-knowledge-rag"]
+                existing_home = existing.get("env", {}).get("LOCAL_KNOWLEDGE_RAG_HOME")
+                print("[WARN] local-knowledge-rag already exists in MCP config")
                 if existing_home:
                     print(f"       Existing home: {existing_home}")
-                    if Path(existing_home).resolve() != doc_reg_home.resolve():
+                    if Path(existing_home).resolve() != doc_rag_home.resolve():
                         print(f"       WARNING: Existing config points to a DIFFERENT location!")
-                        print(f"       New home will be: {doc_reg_home}")
+                        print(f"       New home will be: {doc_rag_home}")
                 if not args.force:
                     print("")
                     print("Use --force to overwrite, or run from the correct project directory.")
@@ -186,10 +186,10 @@ def cmd_init(args):
             return
 
     servers = mcp_config.setdefault("mcpServers", {})
-    servers["local-knowledge-reg"] = server_config
+    servers["local-knowledge-rag"] = server_config
 
     if args.print_only:
-        print(json.dumps({"mcpServers": {"local-knowledge-reg": server_config}}, ensure_ascii=False, indent=2))
+        print(json.dumps({"mcpServers": {"local-knowledge-rag": server_config}}, ensure_ascii=False, indent=2))
         return
 
     if args.dry_run:
@@ -202,7 +202,7 @@ def cmd_init(args):
     print(f"[OK] Created MCP config: {mcp_file}")
     print(f"     Scope: {args.scope}")
     print(f"     Config: {config_target}")
-    print(f"     Project home: {doc_reg_home}")
+    print(f"     Project home: {doc_rag_home}")
     if args.scope == "user":
         print("     This is a user-level MCP config.")
         print("     Restart Claude Code / CCC to load the new configuration.")
@@ -212,9 +212,9 @@ def cmd_init(args):
 
 def cmd_doctor(args):
     print("=" * 60)
-    print("Local Knowledge Reg MCP Doctor")
+    print("Local Knowledge RAG MCP Doctor")
     print("=" * 60)
-    print(f"Install path: {get_doc_reg_home()}")
+    print(f"Install path: {get_doc_rag_home()}")
     print(f"Runtime dir:  {get_runtime_dir()}")
     print(f"Cache dir:    {get_cache_dir()}")
     print(f"Config:       {Path(args.config).resolve()}")
@@ -344,7 +344,7 @@ def format_result(index: int, result: dict, content_limit: int = 500) -> str:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Local Knowledge Reg MCP CLI")
+    parser = argparse.ArgumentParser(description="Local Knowledge RAG MCP CLI")
     parser.add_argument("--config", default="config.yaml", help="Path to config.yaml")
     subparsers = parser.add_subparsers(dest="command")
 
@@ -381,7 +381,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Where to write MCP config. Defaults to user-level ~/.claude/mcp.json.",
     )
     p_init.add_argument("--dry-run", action="store_true", help="Print the target MCP config without writing it")
-    p_init.add_argument("--print-only", action="store_true", help="Print only the local-knowledge-reg MCP snippet")
+    p_init.add_argument("--print-only", action="store_true", help="Print only the local-knowledge-rag MCP snippet")
     p_init.add_argument("--confirm", action="store_true", help="Ask for confirmation before writing")
 
     subparsers.add_parser("doctor", help="Diagnose local setup")
@@ -415,3 +415,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

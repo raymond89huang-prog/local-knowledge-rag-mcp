@@ -1,11 +1,11 @@
-# CCC Cross-Project Test Cases
+﻿# CCC Cross-Project Test Cases
 
 Use these cases when testing Local Knowledge Reg MCP from another project directory through CCC.
 
 Repository:
 
 ```text
-https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
+https://github.com/raymond89huang-prog/local-knowledge-rag-mcp.git
 ```
 
 ## Pre-Install Confirmation
@@ -29,7 +29,7 @@ Prompt to CCC from a different project directory:
 
 ```text
 Use this Git repository as a local MCP knowledge search service:
-https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
+https://github.com/raymond89huang-prog/local-knowledge-rag-mcp.git
 
 Before installing anything, ask me which local knowledge folder should be indexed. MCP config must be user-level, so ask before writing ~/.claude/mcp.json.
 ```
@@ -72,7 +72,7 @@ vaults:
 Expected validation:
 
 ```bash
-python -m doc_reg.cli --config config.yaml doctor
+python -m doc_rag.cli --config config.yaml doctor
 ```
 
 ## Test Case 3: Configure Multiple Vaults
@@ -103,7 +103,7 @@ Expected behavior:
 - After approval, CCC runs:
 
 ```bash
-python -m doc_reg.cli --config config.yaml index --vault product-docs
+python -m doc_rag.cli --config config.yaml index --vault product-docs
 ```
 
 ## Test Case 5: MCP Config Requires Confirmation
@@ -120,7 +120,7 @@ Expected behavior:
 - After approval, CCC runs:
 
 ```bash
-python -m doc_reg.cli --config config.yaml init
+python -m doc_rag.cli --config config.yaml init
 ```
 
 Expected MCP command:
@@ -128,7 +128,7 @@ Expected MCP command:
 ```json
 {
   "command": "python",
-  "args": ["-m", "doc_reg.mcp_server", "--config", "D:/path/to/config.yaml"]
+  "args": ["-m", "doc_rag.mcp_server", "--config", "D:/path/to/config.yaml"]
 }
 ```
 
@@ -137,7 +137,7 @@ Expected MCP command:
 Prompt to CCC after indexing and MCP setup:
 
 ```text
-Use local-knowledge-reg to search for historical payment success rate discussions. Return source citations.
+Use local-knowledge-rag to search for historical payment success rate discussions. Return source citations.
 ```
 
 Expected behavior:
@@ -159,5 +159,6 @@ Expected behavior:
 - After approval, CCC runs:
 
 ```bash
-python -m doc_reg.cli --config config.yaml watch
+python -m doc_rag.cli --config config.yaml watch
 ```
+

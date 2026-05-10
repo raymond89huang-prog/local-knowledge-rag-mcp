@@ -1,8 +1,8 @@
-import csv
+﻿import csv
 from pathlib import Path
 from typing import Iterable, List
 
-from doc_reg.document import DocumentChunk
+from doc_rag.document import DocumentChunk
 from .base import DocumentLoader
 
 
@@ -85,3 +85,4 @@ class SpreadsheetLoader(DocumentLoader):
         if value is None:
             return ""
         return str(value)
+

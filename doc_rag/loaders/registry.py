@@ -1,7 +1,7 @@
-from pathlib import Path
+﻿from pathlib import Path
 from typing import List
 
-from doc_reg.document import DocumentChunk
+from doc_rag.document import DocumentChunk
 from .base import DocumentLoader
 from .docx import DocxLoader
 from .markdown import MarkdownLoader
@@ -31,3 +31,4 @@ class LoaderRegistry:
             if loader.supports(file_path):
                 return loader.load(file_path)
         raise ValueError(f"Unsupported file type: {file_path.suffix}")
+

@@ -1,4 +1,4 @@
-from doc_reg.config import AppConfig
+﻿from doc_rag.config import AppConfig
 
 
 def test_config_loads_multiple_vaults_and_expands_paths(tmp_path):
@@ -28,3 +28,4 @@ search:
     assert config.get_vault("product-docs").description == "Product knowledge"
     assert config.search.default_top_k == 3
     assert config.get_vault("product-docs").resolved_path().name == "Product Docs"
+

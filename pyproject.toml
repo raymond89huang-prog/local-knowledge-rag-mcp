@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "local-knowledge-reg-mcp"
+name = "local-knowledge-rag-mcp"
 version = "0.1.0"
-description = "Local knowledge registry MCP search service."
+description = "Local knowledge RAG MCP search service."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -27,10 +27,11 @@ dev = [
 ]
 
 [project.scripts]
-local-knowledge-reg = "doc_reg.cli:main"
+local-knowledge-rag = "doc_rag.cli:main"
 
 [tool.setuptools]
 py-modules = ["cli"]
 
 [tool.setuptools.packages.find]
-include = ["doc_reg*"]
+include = ["doc_rag*"]
+

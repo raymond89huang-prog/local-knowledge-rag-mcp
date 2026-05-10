@@ -1,4 +1,4 @@
-# AI Installation and Usage Summary
+﻿# AI Installation and Usage Summary
 
 This document is written for AI coding assistants such as Codex, Claude Code, CCC and other MCP-compatible agents. Read this file before installing, configuring or using Local Knowledge Reg MCP for a user.
 
@@ -49,7 +49,7 @@ When installing this project for a user, AI assistants must use the interactive 
 .\setup.ps1
 ```
 
-Do not directly run `local-knowledge-reg init` as the default installation path.
+Do not directly run `local-knowledge-rag init` as the default installation path.
 Do not manually edit `~/.claude/mcp.json` unless the setup script is unavailable and the user explicitly confirms manual configuration.
 
 The setup script is preferred because it:
@@ -161,3 +161,4 @@ Do not fabricate citations or claim that a document was searched if the MCP tool
 This project is local-first. AI agents should avoid sending private file contents to external services unless the user understands and approves the workflow.
 
 Before indexing sensitive directories, remind the user to review include and exclude rules.
+

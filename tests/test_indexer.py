@@ -1,6 +1,6 @@
-from doc_reg.chunker import Chunker
-from doc_reg.config import VaultConfig
-from doc_reg.indexer import Indexer
+﻿from doc_rag.chunker import Chunker
+from doc_rag.config import VaultConfig
+from doc_rag.indexer import Indexer
 
 
 class FakeEmbedder:
@@ -77,3 +77,4 @@ def test_indexer_deletes_removed_file_from_store_and_checkpoint(tmp_path):
 
     assert store.deleted_sources == [("product-docs", ["removed.md"])]
     assert '"removed.md"' not in checkpoint.read_text(encoding="utf-8")
+

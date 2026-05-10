@@ -1,10 +1,10 @@
-import re
+﻿import re
 from pathlib import Path
 from typing import Any, Dict, List
 
 import frontmatter
 
-from doc_reg.document import DocumentChunk
+from doc_rag.document import DocumentChunk
 from .base import DocumentLoader
 
 
@@ -80,3 +80,4 @@ class MarkdownLoader(DocumentLoader):
                 metadata=dict(metadata),
             )
         )
+

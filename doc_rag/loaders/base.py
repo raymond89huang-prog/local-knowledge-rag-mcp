@@ -1,8 +1,8 @@
-from abc import ABC, abstractmethod
+﻿from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List
 
-from doc_reg.document import DocumentChunk
+from doc_rag.document import DocumentChunk
 
 
 class DocumentLoader(ABC):
@@ -14,3 +14,4 @@ class DocumentLoader(ABC):
     @abstractmethod
     def load(self, file_path: Path) -> List[DocumentChunk]:
         raise NotImplementedError
+

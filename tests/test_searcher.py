@@ -1,4 +1,4 @@
-from doc_reg.searcher import Searcher
+﻿from doc_rag.searcher import Searcher
 
 
 class FakeEmbedder:
@@ -72,3 +72,4 @@ def test_search_many_sorts_across_vaults():
     results = searcher.search_many("query", ["product-docs", "research"], top_k=2)
 
     assert [item["metadata"]["source"] for item in results] == ["research/b.md", "prd/a.md"]
+
