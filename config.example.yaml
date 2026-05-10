@@ -11,6 +11,8 @@ chunking:
 vaults:
   product-docs:
     description: "产品需求、方案、会议纪要"
+    # Replace this with your local knowledge folder.
+    # Supports absolute paths, ~, and environment variables.
     path: "~/Knowledge/Product"
     include:
       - "**/*.md"

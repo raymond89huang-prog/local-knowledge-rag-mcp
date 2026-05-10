@@ -1,245 +1,273 @@
 # Local Knowledge Reg MCP
 
-本地知识库 RAG 检索系统。基于 ChromaDB + sentence-transformers 构建，支持语义搜索、增量索引、文件监听自动更新，并通过 MCP (Model Context Protocol) 暴露给 Claude Code / VS Code 使用。
+Local Knowledge Reg MCP 是一个面向产品经理和产品团队的本地知识库检索 MCP 服务。它可以索引本地文档目录，并通过 MCP 向 Codex、Claude Code、CCC 等工具提供带来源引用的检索结果，适合在撰写 PRD、方案、周报、复盘、竞品分析时快速查找历史资料。
 
-## 特性
+Git 地址：
 
-- **语义检索**：基于 BAAI/bge-small-zh-v1.5 中文嵌入模型
-- **增量索引**：MD5 哈希 + 修改时间检测，只处理变更文件
-- **文件监听**：`watch` 命令实时监听 Markdown 文件变化并自动重建索引
-- **MCP 集成**：通过 `@local-knowledge-reg` 在 Claude Code 中直接搜索知识库
-- **路径过滤**：支持按目录/文件名过滤搜索结果
-- **时间过滤**：支持按日期范围过滤（CLI 层）
-- **跨项目复用**：一次安装，任意工作目录通过 MCP 调用
-- **数据隔离**：向量库、检查点、日志全部存放在系统用户目录，不污染文档库
-
-## 架构
-
-```
-doc_reg/
-├── config.py       # 配置模型（YAML -> dataclass）
-├── parser.py       # Markdown 解析（frontmatter + heading 分块）
-├── chunker.py      # 滑动窗口分块
-├── embedder.py     # SentenceTransformer 嵌入
-├── store.py        # ChromaDB 向量存储封装
-├── indexer.py      # 增量索引引擎（检查点管理）
-├── searcher.py     # 语义搜索 + 后过滤（路径/分数/时间）
-├── paths.py        # 运行时路径管理（%LOCALAPPDATA%/local-knowledge-reg-mcp）
-└── mcp_server.py   # MCP 服务器（search_docs / reindex）
-
-cli.py              # CLI 入口（index / search / status / watch / doctor / init / cleanup）
-config.example.yaml # 配置文件模板
+```text
+https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
 ```
 
-运行时数据目录（自动生成）：
-- Windows: `%LOCALAPPDATA%\local-knowledge-reg-mcp\cache\`（向量库 + 检查点）
-- Linux/macOS: `~/.local/local-knowledge-reg-mcp/cache/`
+## v0.1 范围
+
+- 支持多个本地知识库目录。
+- 支持格式：`.md`、`.markdown`、`.txt`、`.docx`、`.pdf`、`.csv`、`.xlsx`。
+- 每个知识库可配置 `include` / `exclude` 规则。
+- 支持首次全量索引和后续增量索引。
+- 支持监听文件新增、修改、删除。
+- 文件变更或删除后会清理旧索引。
+- MCP 工具：`search_docs`、`list_vaults`、`reindex`。
+- 搜索结果带标题、知识库、来源路径、位置、文件类型、引用信息和内容片段。
+- 提供 `doctor` 命令诊断本地配置。
 
 ## 安装
 
-### 1. 环境要求
-
-- Python >= 3.10
-- 首次运行会自动下载嵌入模型（约 100MB）
-
-### 2. 安装依赖
+开发模式安装：
 
 ```bash
-# 推荐使用国内镜像
-pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+pip install -e .
 ```
 
-### 3. 配置文件
-
-复制模板并根据你的知识库路径修改：
+或者只安装依赖：
 
 ```bash
-cp config.example.yaml config.yaml
+pip install -r requirements.txt
 ```
 
-编辑 `config.yaml`：
+安装后命令：
+
+```bash
+local-knowledge-reg --help
+```
+
+如果 Python 用户脚本目录没有加入 `PATH`，可以使用模块方式运行：
+
+```bash
+python -m doc_reg.cli --help
+```
+
+## 添加知识库路径
+
+复制配置模板：
+
+```bash
+copy config.example.yaml config.yaml
+```
+
+然后编辑 `config.yaml`，把每个 `vaults.<name>.path` 替换成你的本地知识库目录。
+
+示例：
 
 ```yaml
 vaults:
-  my-vault:
-    path: "/path/to/your/obsidian-vault"
+  product-docs:
+    description: "产品需求、方案、会议纪要"
+    path: "~/Knowledge/Product"
     include:
       - "**/*.md"
+      - "**/*.txt"
+      - "**/*.docx"
+      - "**/*.pdf"
+      - "**/*.csv"
+      - "**/*.xlsx"
     exclude:
       - ".obsidian/**"
       - ".claude/**"
-      - "local-knowledge-reg-mcp/**"
+      - "~$*.docx"
+
+  research:
+    description: "用户研究、竞品报告、访谈记录"
+    path: "D:/Knowledge/Research"
+    include:
+      - "**/*.md"
+      - "**/*.docx"
+      - "**/*.pdf"
+    exclude:
+      - "archive/**"
 ```
 
-- `vaults.<name>`: 定义一个知识库（可配置多个）
-- `path`: 知识库根目录的**绝对路径**
-- `include/exclude`: Glob 模式控制索引范围
+`path` 支持以下写法：
 
-### 4. 初始化索引
+- 绝对路径：`D:/Knowledge/Product`
+- 用户目录路径：`~/Knowledge/Product`
+- 环境变量：`${PRODUCT_KB_PATH}`
+
+`vaults` 下面的每个条目就是一个知识库。需要添加更多知识库时，继续增加新的命名块即可：
+
+```yaml
+vaults:
+  pm-workspace:
+    description: "个人产品工作区"
+    path: "D:/PM/Workspace"
+    include:
+      - "**/*.md"
+      - "**/*.docx"
+      - "**/*.pdf"
+    exclude:
+      - "archive/**"
+      - "~$*.docx"
+```
+
+`include` 用来声明哪些文件会被索引，`exclude` 用来排除隐私文件、临时文件、归档文件或工具生成目录。
+
+不要直接索引过大的目录，例如整个用户目录、桌面、下载目录、云盘根目录或公司同步盘根目录。确实需要这样做时，先认真配置 `exclude`。
+
+## CLI 用法
 
 ```bash
-python cli.py index
+# 查看配置了哪些知识库
+local-knowledge-reg list-vaults
+
+# 索引所有知识库
+local-knowledge-reg index
+
+# 只索引一个知识库
+local-knowledge-reg index --vault product-docs
+
+# 强制重建索引
+local-knowledge-reg index --force
+
+# 搜索所有知识库
+local-knowledge-reg search "会员体系历史方案"
+
+# 带过滤条件搜索
+local-knowledge-reg search "支付成功率" --vault product-docs --file-type pdf --path reports/
+
+# 监听所有知识库
+local-knowledge-reg watch
+
+# 诊断本地配置
+local-knowledge-reg doctor
 ```
 
-首次全量索引可能需要几分钟，取决于文档数量。
+模块运行方式：
 
-### 5. 配置 MCP（跨项目使用）
+```bash
+python -m doc_reg.cli --config config.yaml search "会员体系历史方案"
+```
 
-#### 方案 A：全局配置（推荐）
+## MCP 配置
 
-编辑 `~/.claude/mcp.json`（Windows 路径为 `C:\Users\<用户名>\.claude\mcp.json`）：
+生成当前项目级 MCP 配置：
+
+```bash
+local-knowledge-reg --config config.yaml init
+```
+
+生成的 MCP 服务使用模块启动方式：
 
 ```json
 {
   "mcpServers": {
     "local-knowledge-reg": {
       "command": "python",
-      "args": [
-        "D:/absolute/path/to/local-knowledge-reg-mcp/doc_reg/mcp_server.py",
-        "--config",
-        "D:/absolute/path/to/local-knowledge-reg-mcp/config.yaml"
-      ],
+      "args": ["-m", "doc_reg.mcp_server", "--config", "D:/path/to/config.yaml"],
       "env": {
         "PYTHONIOENCODING": "utf-8",
-        "LOCAL_KNOWLEDGE_REG_HOME": "D:/absolute/path/to/local-knowledge-reg-mcp"
+        "LOCAL_KNOWLEDGE_REG_HOME": "D:/path/to/local-knowledge-reg-mcp"
       }
     }
   }
 }
 ```
 
-> `LOCAL_KNOWLEDGE_REG_HOME` 指向 local-knowledge-reg-mcp 项目根目录，确保 MCP 服务器能正确定位自身。旧版 `DOC_REG_HOME` 仍兼容。
+## Codex / Claude Code / CCC 安装确认事项
 
-#### 方案 B：项目级配置
+当 Codex、Claude Code、CCC 或其他代码代理通过 Git 地址安装或配置本项目时，应该先和用户确认以下事项：
 
-在任意项目目录下运行：
+- 要索引哪个本地知识库目录。
+- 是否有多个知识库目录需要分别配置为多个 vault。
+- `config.yaml` 应该创建或更新到哪里。
+- MCP 配置应写入当前项目、全局配置，还是只展示配置片段。
+- 是否允许安装 Python 依赖。
+- 是否允许执行首次全量索引，因为这可能会下载 embedding 模型并扫描本地文档。
+- 是否现在启动文件监听，还是让用户后续手动运行。
 
-```bash
-cd /path/to/other-project
-python /path/to/local-knowledge-reg-mcp/cli.py init
+代理不应该猜测用户的私人文档路径。对于用户目录、桌面、下载目录、云盘根目录、公司同步盘根目录等范围较大的位置，必须先明确确认。
+
+推荐的首次接入流程：
+
+```text
+1. 克隆或打开仓库。
+2. 询问用户要索引的知识库路径。
+3. 复制 config.example.yaml 为 config.yaml。
+4. 只更新用户确认过的 vault path、description、include、exclude。
+5. 安装依赖前先确认。
+6. 运行 doctor 验证配置。
+7. 首次 index 前先确认。
+8. 写入 MCP 配置前先确认。
 ```
 
-这会在当前目录生成 `.claude/mcp.json`，仅在该项目生效。
+当用户接入个人或团队知识库时，Codex 和 CCC 应优先展示计划写入的 `config.yaml` 内容，再执行修改。
 
-配置完成后，**重启 VS Code 或 Claude Code**，即可通过 `@local-knowledge-reg` 调用搜索。
+CCC 跨项目验证清单见：[docs/ccc-test-cases.md](docs/ccc-test-cases.md)。
 
-## CLI 用法
+## 测试
+
+安装开发依赖：
 
 ```bash
-# 建立/更新索引
-python cli.py index
-python cli.py index --force        # 强制全量重建
-python cli.py index --vault my-vault
-
-# 语义搜索
-python cli.py search "风控规则"
-python cli.py search "张三" --top-k 10
-python cli.py search "周报" --path "周报/"
-python cli.py search "项目进展" --since 2026-04-01 --until 2026-05-01
-
-# 查看索引状态
-python cli.py status
-
-# 监听文件变化（自动增量索引）
-python cli.py watch
-
-# 诊断各组件状态
-python cli.py doctor
-
-# 清理运行时数据（向量库、检查点、日志）
-python cli.py cleanup --force
+pip install -r requirements-dev.txt
 ```
+
+运行测试：
+
+```bash
+python -m pytest
+```
+
+当前测试不会下载 embedding 模型，也不需要真实 ChromaDB 索引。测试覆盖配置加载、loader 行为、索引清理 metadata、搜索过滤和 CCC 安装预期。
 
 ## MCP 工具
 
-连接成功后，Claude Code 中会暴露两个工具：
-
 ### `search_docs`
 
-```
-@local-knowledge-reg search_docs query="风控规则最新变更" top_k=5 path_filter="风控/"
-```
+搜索本地已索引文档，返回标题、知识库、来源路径、位置、文件类型、引用信息和内容片段。
 
 参数：
-- `query` (required): 检索意图，中文自然语言
-- `vault`: 目标 vault 名称，默认取 config 中第一个
-- `top_k`: 返回结果数量，默认 5
-- `path_filter`: 按路径过滤，如 `"周报/"` 只搜周报目录
+
+- `query`：必填，检索问题。
+- `vault`：可选，指定知识库名。不填时搜索所有知识库。
+- `top_k`：可选，返回结果数量。
+- `path_filter`：可选，按来源路径子串过滤。
+- `file_type`：可选，按文件类型过滤，例如 `md`、`docx`、`pdf`、`csv`、`xlsx`。
+
+### `list_vaults`
+
+列出当前配置的知识库名称、路径和描述。
 
 ### `reindex`
 
-```
-@local-knowledge-reg reindex vault="my-vault"
-```
+对一个或全部知识库执行增量索引。
 
-新增/修改文件后调用，触发增量索引更新。
+参数：
 
-## 开发
+- `vault`：可选，指定知识库名。
+- `force`：可选，是否强制全量重建。
 
-### 目录结构
+## Chunking 质量提醒
 
-```
-local-knowledge-reg-mcp/
-├── cli.py              # CLI 入口
-├── requirements.txt    # Python 依赖
-├── config.example.yaml # 配置模板
-├── README.md           # 本文件
-└── doc_reg/            # 核心包
-    ├── __init__.py
-    ├── config.py
-    ├── parser.py
-    ├── chunker.py
-    ├── embedder.py
-    ├── store.py
-    ├── indexer.py
-    ├── searcher.py
-    ├── paths.py
-    └── mcp_server.py
-```
+Codex、Claude Code 和 CCC 应该把 chunking 质量视为检索质量的关键因素。当用户询问 embedding 模型、向量检索质量、RAG 召回、索引或 MCP 文档检索时，代理应先提醒用户：chunk 切分质量可能和模型选择一样重要。
 
-### 添加新的 CLI 命令
+中文和中英混合知识库的建议起点：
 
-在 `cli.py` 的 `main()` 函数中添加 `subparsers.add_parser(...)`，并在命令分发区添加对应处理逻辑。
+- 优先按文档结构切分：标题、段落、列表、表格、代码块。
+- 避免在代码块、命令、JSON、YAML、表格和 frontmatter 中间切断。
+- 中文文本建议 chunk 大小约 300-800 字，重叠 80-150 字。
+- 中英混合技术文本建议约 500-1000 tokens，重叠 100-200 tokens。
+- metadata 中保留标题、标题路径、来源路径、文件类型、chunk 序号，方便结果解释和引用。
 
-### 修改搜索逻辑
+在下载或引入更大的 embedding 模型前，代理应先询问用户是否需要检查 chunking。不要在用户未确认的情况下重建完整向量索引。
 
-`searcher.py` 的 `search()` 方法支持后过滤（路径、分数、时间）。如需新增过滤维度，在此添加并同步更新 `cli.py` 和 `mcp_server.py` 的参数透传。
+## 运行时数据
 
-### 自定义嵌入模型
+生成的数据不会写入源码目录：
 
-修改 `config.yaml`：
+- Windows：`%LOCALAPPDATA%/local-knowledge-reg-mcp/`
+- Linux/macOS fallback：`~/.local/local-knowledge-reg-mcp/`
 
-```yaml
-embedding:
-  model_name: "BAAI/bge-large-zh-v1.5"
-  device: "cpu"
-  normalize: true
-```
+运行时目录包含 ChromaDB 数据和 checkpoint。
 
-> 首次切换模型时会自动下载。更换模型后建议 `--force` 重建索引。
+## Roadmap
 
-## 故障排查
-
-### `python cli.py doctor`
-
-一键诊断所有组件：安装路径、缓存目录、向量库连接、索引状态、模型加载、MCP 配置。
-
-### 常见问题
-
-1. **MCP 在 VS Code 中不生效**
-   - 检查 `~/.claude/mcp.json` 路径是否为绝对路径
-   - 确认 `LOCAL_KNOWLEDGE_REG_HOME` 环境变量设置正确
-   - 重启 VS Code 或 Claude Code
-
-2. **索引后搜索无结果**
-   - 确认 `config.yaml` 中的 `path` 是绝对路径
-   - 运行 `python cli.py doctor` 查看索引状态
-   - 确认 `include` 模式能匹配到你的文档
-
-3. **Windows 下中文输出乱码**
-   - 已在 `cli.py` 中设置 `sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")`
-   - 如仍有问题，在 PowerShell 中执行 `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8`
-
-## License
-
-MIT
+见 [ROADMAP.md](ROADMAP.md)。

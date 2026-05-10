@@ -21,6 +21,11 @@ dependencies = [
   "openpyxl>=3.1.0",
 ]
 
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+]
+
 [project.scripts]
 local-knowledge-reg = "doc_reg.cli:main"
 
