@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [project.scripts]
-local-knowledge-reg = "cli:main"
+local-knowledge-reg = "doc_reg.cli:main"
 
 [tool.setuptools]
 py-modules = ["cli"]

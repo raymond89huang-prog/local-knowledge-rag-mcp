@@ -1,18 +1,34 @@
-import asyncio
 import argparse
-from pathlib import Path
+import asyncio
 
-from mcp.server import Server, NotificationOptions
-from mcp.server.stdio import stdio_server
-from mcp.types import Tool, TextContent
+from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
+from mcp.server.stdio import stdio_server
+from mcp.types import TextContent, Tool
 
-from .config import AppConfig
-from .store import VectorStore
-from .embedder import Embedder
 from .chunker import Chunker
+from .config import AppConfig
+from .embedder import Embedder
 from .indexer import Indexer
+from .paths import get_cache_dir
 from .searcher import Searcher
+from .store import VectorStore
+
+
+def _format_result(index: int, result: dict) -> str:
+    metadata = result["metadata"]
+    return "\n".join(
+        [
+            f"[Result {index}] score: {result['score']:.3f}",
+            f"Vault: {metadata.get('vault', 'N/A')}",
+            f"Title: {metadata.get('title', 'N/A')}",
+            f"Source: {metadata.get('source', 'N/A')}",
+            f"Location: {metadata.get('location') or metadata.get('heading', 'N/A')}",
+            f"Type: {metadata.get('file_type', 'N/A')}",
+            f"Citation: {metadata.get('citation', metadata.get('source', 'N/A'))}",
+            f"Content:\n{result['content'][:700]}...",
+        ]
+    )
 
 
 async def main():
@@ -21,10 +37,7 @@ async def main():
     args = parser.parse_args()
 
     config = AppConfig.from_yaml(args.config)
-
-    from .paths import get_cache_dir
     cache_dir = get_cache_dir()
-
     store = VectorStore(str(cache_dir / "chroma"))
     embedder = Embedder(
         model_name=config.embedding.model_name,
@@ -35,24 +48,7 @@ async def main():
         chunk_size=config.chunking.chunk_size,
         chunk_overlap=config.chunking.chunk_overlap,
     )
-    searcher = Searcher(
-        store=store,
-        embedder=embedder,
-        min_score=config.search.min_score,
-    )
-
-    default_vault = config.get_vault()
-
-    from .paths import get_cache_dir
-    _cache_dir = get_cache_dir()
-    indexer = Indexer(
-        vault_config=default_vault,
-        embedder=embedder,
-        store=store,
-        chunker=chunker,
-        checkpoint_dir=str(_cache_dir / "checkpoints"),
-    )
-
+    searcher = Searcher(store=store, embedder=embedder, min_score=config.search.min_score)
     server = Server("local-knowledge-reg")
 
     @server.list_tools()
@@ -60,41 +56,32 @@ async def main():
         return [
             Tool(
                 name="search_docs",
-                description="从文档库中检索相关产品文档、周报、规划、指标口径等。支持按路径过滤（如 '周报/' 只搜周报目录）",
+                description="Search local product knowledge documents with source citations.",
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "检索意图，用中文自然语言描述",
-                        },
-                        "vault": {
-                            "type": "string",
-                            "description": "目标 vault 名称，如不填则使用默认 vault",
-                        },
-                        "top_k": {
-                            "type": "number",
-                            "default": 5,
-                            "description": "返回结果数量",
-                        },
-                        "path_filter": {
-                            "type": "string",
-                            "description": "按路径过滤，如 '周报/' 或 '测试文档'",
-                        },
+                        "query": {"type": "string", "description": "Natural language search query."},
+                        "vault": {"type": "string", "description": "Optional vault name. Searches all vaults when omitted."},
+                        "top_k": {"type": "number", "default": 5, "description": "Number of results."},
+                        "path_filter": {"type": "string", "description": "Filter by source path substring."},
+                        "file_type": {"type": "string", "description": "Filter by file type, such as md, docx, pdf, csv, xlsx."},
                     },
                     "required": ["query"],
                 },
             ),
             Tool(
+                name="list_vaults",
+                description="List configured local knowledge vaults.",
+                inputSchema={"type": "object", "properties": {}},
+            ),
+            Tool(
                 name="reindex",
-                description="触发文档库的增量索引更新，新增或修改文件后调用",
+                description="Run incremental indexing for one vault or all configured vaults.",
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "vault": {
-                            "type": "string",
-                            "description": "目标 vault 名称，如不填则使用默认 vault",
-                        },
+                        "vault": {"type": "string", "description": "Optional vault name. Reindexes all vaults when omitted."},
+                        "force": {"type": "boolean", "default": False, "description": "Force a full reindex."},
                     },
                 },
             ),
@@ -102,57 +89,55 @@ async def main():
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict):
+        arguments = arguments or {}
+
+        if name == "list_vaults":
+            lines = []
+            for vault in config.list_vaults():
+                lines.append(f"- {vault.name}: {vault.resolved_path()}")
+                if vault.description:
+                    lines.append(f"  {vault.description}")
+            return [TextContent(type="text", text="\n".join(lines))]
+
         if name == "search_docs":
             query = arguments.get("query", "")
             vault_name = arguments.get("vault")
-            top_k = arguments.get("top_k", config.search.default_top_k)
+            top_k = int(arguments.get("top_k", config.search.default_top_k))
             path_filter = arguments.get("path_filter")
-
-            if not vault_name:
-                vault_name = config.get_vault().name
+            file_type = arguments.get("file_type")
+            vault_names = [config.get_vault(vault_name).name] if vault_name else [vault.name for vault in config.list_vaults()]
 
             try:
-                results = searcher.search(
+                results = searcher.search_many(
                     query=query,
-                    vault_name=vault_name,
-                    top_k=int(top_k),
+                    vault_names=vault_names,
+                    top_k=top_k,
                     path_filter=path_filter,
+                    file_type=file_type,
                 )
-
                 if not results:
-                    return [TextContent(type="text", text="未找到相关文档。")]
-
-                lines = []
-                for i, r in enumerate(results, 1):
-                    meta = r["metadata"]
-                    lines.append(f"【结果 {i}】相关度: {r['score']:.3f}")
-                    lines.append(f"标题: {meta.get('title', 'N/A')}")
-                    lines.append(f"路径: {meta.get('source', 'N/A')}")
-                    lines.append(f"章节: {meta.get('heading', 'N/A')}")
-                    lines.append(f"内容摘要:\n{r['content'][:500]}...")
-                    lines.append("")
-
-                return [TextContent(type="text", text="\n".join(lines))]
+                    return [TextContent(type="text", text="No matching documents found.")]
+                text = "\n\n".join(_format_result(i, result) for i, result in enumerate(results, 1))
+                return [TextContent(type="text", text=text)]
             except Exception as e:
-                return [TextContent(type="text", text=f"检索出错: {str(e)}")]
+                return [TextContent(type="text", text=f"Search failed: {e}")]
 
-        elif name == "reindex":
+        if name == "reindex":
             vault_name = arguments.get("vault")
-            target_vault = config.get_vault(vault_name) if vault_name else default_vault
-
+            force = bool(arguments.get("force", False))
+            vaults = [config.get_vault(vault_name)] if vault_name else config.list_vaults()
             try:
-                _cache = get_cache_dir()
-                local_indexer = Indexer(
-                    vault_config=target_vault,
-                    embedder=embedder,
-                    store=store,
-                    chunker=chunker,
-                    checkpoint_dir=str(_cache / "checkpoints"),
-                )
-                local_indexer.index()
-                return [TextContent(type="text", text=f"Vault '{target_vault.name}' 索引更新完成。")]
+                for vault in vaults:
+                    Indexer(
+                        vault_config=vault,
+                        embedder=embedder,
+                        store=store,
+                        chunker=chunker,
+                        checkpoint_dir=str(cache_dir / "checkpoints"),
+                    ).index(force=force)
+                return [TextContent(type="text", text=f"Indexed {len(vaults)} vault(s).")]
             except Exception as e:
-                return [TextContent(type="text", text=f"索引更新失败: {str(e)}")]
+                return [TextContent(type="text", text=f"Indexing failed: {e}")]
 
         raise ValueError(f"Unknown tool: {name}")
 
