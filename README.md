@@ -41,8 +41,23 @@ https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
 请阅读这个 Git 仓库并帮我在当前机器上接入本地知识库 MCP：
 https://github.com/raymond89huang-prog/local-knowledge-reg-mcp.git
 
-MCP 配置需要写入用户级配置。请在安装依赖、创建 config.yaml、写入用户级 MCP 配置、执行首次索引之前，都先向我确认。
-不要猜测我的知识库路径，先问我要索引哪个本地目录。
+请按以下原则执行：
+
+1. 不要猜测我的知识库路径，先问我要索引哪个本地目录。
+2. 安装依赖、创建或更新 config.yaml、执行首次索引、写入用户级 MCP 配置前，都需要先展示计划并让我确认。
+3. 首次索引完成后，询问我是否需要开启文件变更监听：
+   A. 不开启，仅手动 reindex
+   B. 临时开启 watch
+   C. 安装为 Windows 常驻监听任务
+4. 如果我选择 C，必须先展示：
+   - 任务名称
+   - 启动命令
+   - config.yaml 路径
+   - runtime / 日志路径
+   - 如何停止
+   - 如何卸载
+   我确认后再安装。
+5. 不要默认创建后台常驻进程。
 ```
 
 ### 是否需要管理员 PowerShell
@@ -249,7 +264,12 @@ local-knowledge-reg --config config.yaml init --scope project
 - 是否只展示 MCP 配置片段，而不是直接写入。
 - 是否允许安装 Python 依赖。
 - 是否允许执行首次全量索引，因为这可能会下载 embedding 模型并扫描本地文档。
-- 是否现在启动文件监听，还是让用户后续手动运行。
+- 是否开启文件变更监听：
+  - 不开启：仅执行首次索引，后续由用户手动运行 `reindex` 或 `local-knowledge-reg index`。
+  - 临时开启：在当前终端运行 `local-knowledge-reg watch`，终端关闭后停止。
+  - 常驻开启：安装为 Windows 后台任务或开机自启任务，持续监听配置中的知识库目录。
+- 如果用户选择常驻监听，必须先展示计划创建的任务名称、启动命令、`config.yaml` 路径、runtime / 日志路径、停止方式和卸载方式，并获得确认后再执行。
+- 不得默认创建后台常驻进程。默认应仅执行首次索引和 MCP 配置，让用户后续通过 `reindex` 手动刷新。
 - 如果机器上已经有其他目录安装过本项目，是否复用已有 runtime，还是为当前项目创建独立 runtime。
 
 代理不应该猜测用户的私人文档路径。对于用户目录、桌面、下载目录、云盘根目录、公司同步盘根目录等范围较大的位置，必须先明确确认。
@@ -265,6 +285,20 @@ local-knowledge-reg --config config.yaml init --scope project
 6. 运行 doctor 验证配置。
 7. 首次 index 前先确认。
 8. 写入用户级 MCP 配置前先确认。
+9. 首次索引和 MCP 配置完成后，再询问用户是否需要开启 watch：
+   A. 不开启，仅手动 reindex。
+   B. 临时开启，在当前终端运行 watch。
+   C. 常驻开启，安装为 Windows 后台任务或开机自启任务。
+10. 如果用户选择常驻开启，先展示任务配置、启动命令、配置路径、日志路径、停止方式和卸载方式，确认后再安装。
+```
+
+文件监听模式建议：
+
+```text
+默认建议：不安装常驻 watch，仅执行首次索引。
+适合轻量使用：文档变化后手动 reindex。
+适合高频维护知识库：临时开启 watch，观察稳定后再考虑常驻。
+适合长期知识库场景：用户明确确认后，再安装常驻 watch。
 ```
 
 当用户接入个人或团队知识库时，Codex 和 CCC 应优先展示计划写入的 `config.yaml` 和用户级 MCP 配置内容，再执行修改。
