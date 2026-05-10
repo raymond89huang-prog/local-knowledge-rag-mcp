@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "local-knowledge-reg-mcp"
+version = "0.1.0"
+description = "Local knowledge registry MCP search service."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "chromadb>=0.5.0",
+  "sentence-transformers>=3.0.0",
+  "pyyaml>=6.0",
+  "python-frontmatter>=1.0.0",
+  "markdown>=3.5",
+  "mcp>=1.0.0",
+  "watchdog>=3.0.0",
+  "python-docx>=1.1.0",
+  "pypdf>=4.0.0",
+  "openpyxl>=3.1.0",
+]
+
+[project.scripts]
+local-knowledge-reg = "cli:main"
+
+[tool.setuptools]
+py-modules = ["cli"]
+
+[tool.setuptools.packages.find]
+include = ["doc_reg*"]

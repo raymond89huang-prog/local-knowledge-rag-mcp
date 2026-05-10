@@ -1,0 +1,40 @@
+embedding:
+  model_name: "BAAI/bge-small-zh-v1.5"
+  device: "cpu"
+  normalize: true
+
+chunking:
+  chunk_size: 400
+  chunk_overlap: 50
+  respect_headings: true
+
+vaults:
+  product-docs:
+    description: "产品需求、方案、会议纪要"
+    path: "~/Knowledge/Product"
+    include:
+      - "**/*.md"
+      - "**/*.txt"
+      - "**/*.docx"
+      - "**/*.pdf"
+      - "**/*.csv"
+      - "**/*.xlsx"
+    exclude:
+      - ".obsidian/**"
+      - ".claude/**"
+      - "local-knowledge-reg-mcp/**"
+      - "~$*.docx"
+
+  research:
+    description: "用户研究、竞品报告、访谈记录"
+    path: "~/Knowledge/Research"
+    include:
+      - "**/*.md"
+      - "**/*.docx"
+      - "**/*.pdf"
+    exclude:
+      - "archive/**"
+
+search:
+  default_top_k: 5
+  min_score: 0.3
