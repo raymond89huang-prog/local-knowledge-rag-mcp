@@ -122,28 +122,56 @@ def cmd_init(args):
         else:
             print(f"[WARN] Config template not found: {template}")
 
-    claude_dir = Path.cwd() / ".claude"
+    if args.scope == "user":
+        claude_dir = Path.home() / ".claude"
+    else:
+        claude_dir = Path.cwd() / ".claude"
     mcp_file = claude_dir / "mcp.json"
-    if mcp_file.exists() and not args.force:
-        print(f"[WARN] {mcp_file} already exists. Use --force to overwrite.")
+
+    server_config = {
+        "command": "python",
+        "args": ["-m", "doc_reg.mcp_server", "--config", str(config_target)],
+        "env": {
+            "PYTHONIOENCODING": "utf-8",
+            "LOCAL_KNOWLEDGE_REG_HOME": str(get_doc_reg_home()),
+        },
+    }
+
+    if mcp_file.exists():
+        try:
+            mcp_config = json.loads(mcp_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError as e:
+            print(f"[ERR] Existing MCP config is not valid JSON: {mcp_file}")
+            print(f"      {e}")
+            return
+    else:
+        mcp_config = {}
+
+    servers = mcp_config.setdefault("mcpServers", {})
+    if "local-knowledge-reg" in servers and not args.force:
+        print(f"[WARN] local-knowledge-reg already exists in {mcp_file}. Use --force to replace it.")
         return
 
-    mcp_config = {
-        "mcpServers": {
-            "local-knowledge-reg": {
-                "command": "python",
-                "args": ["-m", "doc_reg.mcp_server", "--config", str(config_target)],
-                "env": {
-                    "PYTHONIOENCODING": "utf-8",
-                    "LOCAL_KNOWLEDGE_REG_HOME": str(get_doc_reg_home()),
-                },
-            }
-        }
-    }
+    servers["local-knowledge-reg"] = server_config
+
+    if args.print_only:
+        print(json.dumps({"mcpServers": {"local-knowledge-reg": server_config}}, ensure_ascii=False, indent=2))
+        return
+
+    if args.dry_run:
+        print(f"[DRY-RUN] Would write MCP config to: {mcp_file}")
+        print(json.dumps(mcp_config, ensure_ascii=False, indent=2))
+        return
+
     claude_dir.mkdir(parents=True, exist_ok=True)
     mcp_file.write_text(json.dumps(mcp_config, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"[OK] Created MCP config: {mcp_file}")
+    print(f"     Scope: {args.scope}")
     print(f"     Config: {config_target}")
+    if args.scope == "user":
+        print("     This is a user-level MCP config.")
+    else:
+        print("     This is a project-level MCP config.")
 
 
 def cmd_doctor(args):
@@ -310,6 +338,14 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_init = subparsers.add_parser("init", help="Create config template and MCP config")
     p_init.add_argument("--force", action="store_true", help="Overwrite existing MCP config")
+    p_init.add_argument(
+        "--scope",
+        choices=["user", "project"],
+        default="user",
+        help="Where to write MCP config. Defaults to user-level ~/.claude/mcp.json.",
+    )
+    p_init.add_argument("--dry-run", action="store_true", help="Print the target MCP config without writing it")
+    p_init.add_argument("--print-only", action="store_true", help="Print only the local-knowledge-reg MCP snippet")
 
     subparsers.add_parser("doctor", help="Diagnose local setup")
     return parser
